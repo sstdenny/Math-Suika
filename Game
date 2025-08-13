@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Math Game with Google Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; }
+    canvas { display: block; margin: 0 auto; background: #f0f0f0; }
+    #startMenu { padding-top: 50px; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<div id="startMenu">
+  <h1>Welcome to the Math Game</h1>
+  <div id="g_id_onload"
+       data-client_id="396894083200-q1n0mk1sam1qmu6d8njf6sp0v77582cp.apps.googleusercontent.com"
+       data-callback="handleCredentialResponse"
+       data-auto_prompt="false">
+  </div>
+  <div class="g_id_signin" data-type="standard"></div>
+  <br>
+  <button onclick="continueAsGuest()">Continue as Guest</button>
+</div>
+
+<canvas id="gameCanvas" width="800" height="600" style="display:none;"></canvas>
+
+<script>
+const webAppURL = "https://script.google.com/a/macros/smcsd.org/s/AKfycbx50yH4Yzgb7atWeqm4AXaTACoh8SgC2s4n7MsVTbiBzRdjsZGsr9V4jrlLwejUD8Q/exec";
+
+let playerName = "";
+let sessionStart = null;
+let totalTimePlayed = 0;
+let gameRunning = false;
+let score = 0;
+
+function handleCredentialResponse(response) {
+  const data = parseJwt(response.credential);
+  playerName = data.name || "Unknown Player";
+  startSession();
+}
+
+function parseJwt(token) {
+  let base64Url = token.split('.')[1];
+  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  let jsonPayload = decodeURIComponent(window.atob(base64).split('').map(c =>
+    '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+  ).join(''));
+  return JSON.parse(jsonPayload);
+}
+
+function continueAsGuest() {
+  playerName = "Guest";
+  startSession();
+}
+
+function startSession() {
+  document.getElementById("startMenu").style.display = "none";
+  document.getElementById("gameCanvas").style.display = "block";
+  sessionStart = new Date();
+  startGame();
+}
+
+function endSession() {
+  const sessionEnd = new Date();
+  sendToSheet({
+    Name: playerName,
+    Score: score,
+    TotalTimePlayed: totalTimePlayed,
+    SessionStart: sessionStart.toISOString(),
+    SessionEnd: sessionEnd.toISOString()
+  });
+}
+
+function sendToSheet(data) {
+  fetch(webAppURL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+}
+
+// Example Game Logic
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let question = "";
+let answer = 0;
+let feedback = "";
+let feedbackTimer = 0;
+
+function startGame() {
+  gameRunning = true;
+  score = 0;
+  nextQuestion();
+  requestAnimationFrame(gameLoop);
+}
+
+function nextQuestion() {
+  let a = Math.floor(Math.random() * 10) + 1;
+  let b = Math.floor(Math.random() * 10) + 1;
+  question = `${a} + ${b}`;
+  answer = a + b;
+}
+
+document.addEventListener("keydown", e => {
+  if (!gameRunning) return;
+  if (e.key >= '0' && e.key <= '9') {
+    let playerAnswer = parseInt(e.key);
+    if (playerAnswer === answer) {
+      score++;
+      nextQuestion();
+    } else {
+      feedback = "Wrong!";
+      feedbackTimer = 120; // 2 seconds at 60fps
+    }
+  }
+});
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = "30px Arial";
+  ctx.fillText(`Question: ${question}`, 300, 200);
+  ctx.fillText(`Score: ${score}`, 350, 250);
+
+  if (feedbackTimer > 0) {
+    ctx.fillText(feedback, 350, 300);
+    feedbackTimer--;
+  }
+
+  if (gameRunning) {
+    totalTimePlayed++;
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+window.addEventListener("beforeunload", endSession);
+</script>
+
+</body>
+</html>
