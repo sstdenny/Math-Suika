@@ -1,143 +1,538 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Math Game with Google Login</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 0; }
-    canvas { display: block; margin: 0 auto; background: #f0f0f0; }
-    #startMenu { padding-top: 50px; }
-    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
-  </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Math Suika — Play</title>
+
+  <!-- Tailwind + Matter.js + Google Identity -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Poppins', sans-serif; background-color:#f0f4f8; margin:0; min-height:100vh; }
+    .game-container { touch-action: none; }
+    canvas { background-color: #ffffff; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.08); display:block; }
+    .control-panel { background-color: white; padding: 24px; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.06); }
+    .slider-container { display:flex; flex-direction:column; align-items:center; width:100%; }
+    input[type="range"]{ -webkit-appearance:none; width:100%; height:8px; background:#d3d3d3; outline:none;border-radius:5px; }
+    input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; width:20px;height:20px;background:#3b82f6;border-radius:50%; }
+    .glass-overlay { background: rgba(255,255,255,0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border:1px solid rgba(255,255,255,0.3); }
+    /* Login overlay */
+    #login-overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(17,24,39,0.75); z-index:60; }
+    #login-card { background: white; padding:28px; border-radius:12px; width: min(520px, 92%); text-align:center; box-shadow:0 20px 40px rgba(2,6,23,0.4); }
+    #googleSignInDiv { display:flex; justify-content:center; margin-bottom:12px; }
+    #guest-button { margin-top:8px; }
+  </style>
 </head>
-<body>
+<body class="flex items-center justify-center p-6">
 
-<div id="startMenu">
-  <h1>Welcome to the Math Game</h1>
-  <div id="g_id_onload"
-       data-client_id="396894083200-q1n0mk1sam1qmu6d8njf6sp0v77582cp.apps.googleusercontent.com"
-       data-callback="handleCredentialResponse"
-       data-auto_prompt="false">
+  <!-- LOGIN OVERLAY -->
+  <div id="login-overlay">
+    <div id="login-card">
+      <h2 style="font-size:26px; font-weight:700; margin-bottom:8px;">Math Suika</h2>
+      <p style="color:#374151; margin-bottom:18px;">Sign in to save your high scores, or continue as a guest.</p>
+
+      <!-- Rendered Google button will go here -->
+      <div id="googleSignInDiv" aria-hidden="false"></div>
+
+      <!-- Optional: a smaller plain button fallback -->
+      <button id="guest-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg">
+        Continue as Guest
+      </button>
+    </div>
   </div>
-  <div class="g_id_signin" data-type="standard"></div>
-  <br>
-  <button onclick="continueAsGuest()">Continue as Guest</button>
-</div>
 
-<canvas id="gameCanvas" width="800" height="600" style="display:none;"></canvas>
+  <!-- MAIN LAYOUT -->
+  <div class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6" id="main-layout" style="display:block;">
+    <!-- Game Canvas -->
+    <div class="lg:col-span-2 relative game-container">
+      <div id="game-canvas-container"></div>
 
-<script>
-const webAppURL = "https://script.google.com/a/macros/smcsd.org/s/AKfycbx50yH4Yzgb7atWeqm4AXaTACoh8SgC2s4n7MsVTbiBzRdjsZGsr9V4jrlLwejUD8Q/exec";
+      <div id="game-over-overlay" class="absolute inset-0 flex-col items-center justify-center text-center rounded-lg glass-overlay hidden" style="display:flex; gap:12px; align-items:center; justify-content:center;">
+        <h2 class="text-5xl font-bold text-gray-800">Game Over!</h2>
+        <p class="text-2xl mt-4 text-gray-700">Final Score: <span id="final-score">0</span></p>
+        <button id="restart-button" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+          Play Again
+        </button>
+      </div>
+    </div>
 
-let playerName = "";
-let sessionStart = null;
-let totalTimePlayed = 0;
-let gameRunning = false;
-let score = 0;
+    <!-- Controls and Info Panel -->
+    <div class="control-panel flex flex-col justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-800 text-center mb-4">Math Suika</h1>
 
-function handleCredentialResponse(response) {
-  const data = parseJwt(response.credential);
-  playerName = data.name || "Unknown Player";
-  startSession();
-}
+        <!-- Score, Timer, Streak -->
+        <div class="grid grid-cols-3 text-center mb-6">
+          <div>
+            <p class="text-sm text-gray-500">SCORE</p>
+            <p id="score" class="text-3xl font-bold text-blue-600">0</p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">TIME</p>
+            <p id="timer" class="text-3xl font-bold text-gray-800">60</p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">STREAK</p>
+            <p id="streak" class="text-3xl font-bold text-orange-500">0x</p>
+          </div>
+        </div>
 
-function parseJwt(token) {
-  let base64Url = token.split('.')[1];
-  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  let jsonPayload = decodeURIComponent(window.atob(base64).split('').map(c =>
-    '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-  ).join(''));
-  return JSON.parse(jsonPayload);
-}
+        <!-- Math Problem -->
+        <div class="bg-gray-100 p-4 rounded-lg text-center mb-6 min-h-[120px] flex flex-col justify-center">
+          <p id="problem-text" class="text-lg text-gray-600">What is...</p>
+          <p id="problem" class="text-4xl font-bold text-gray-800 my-2">5 × 8?</p>
+          <input type="number" id="answer-input" class="w-full text-center text-2xl p-2 border-2 border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500" placeholder="Your answer" disabled>
+        </div>
 
-function continueAsGuest() {
-  playerName = "Guest";
-  startSession();
-}
+        <!-- Settings -->
+        <div class="space-y-6">
+          <div class="slider-container">
+            <label for="difficulty-slider" class="text-sm font-medium text-gray-700 mb-1">Difficulty: <span id="difficulty-value">10</span></label>
+            <input id="difficulty-slider" type="range" min="5" max="20" value="10" class="w-full">
+          </div>
+          <div class="slider-container">
+            <label for="time-slider" class="text-sm font-medium text-gray-700 mb-1">Time (s): <span id="time-value">60</span>s</label>
+            <input id="time-slider" type="range" min="30" max="180" step="15" value="60" class="w-full">
+          </div>
+        </div>
+      </div>
 
-function startSession() {
-  document.getElementById("startMenu").style.display = "none";
-  document.getElementById("gameCanvas").style.display = "block";
-  sessionStart = new Date();
-  startGame();
-}
+      <!-- Start Button -->
+      <button id="start-button" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+        Start Game
+      </button>
+    </div>
+  </div>
 
-function endSession() {
-  const sessionEnd = new Date();
-  sendToSheet({
-    Name: playerName,
-    Score: score,
-    TotalTimePlayed: totalTimePlayed,
-    SessionStart: sessionStart.toISOString(),
-    SessionEnd: sessionEnd.toISOString()
-  });
-}
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // ---------- CONFIG ----------
+    const GOOGLE_CLIENT_ID = '396894083200-q1n0mk1sam1qmu6d8njf6sp0v77582cp.apps.googleusercontent.com';
+    const SHEETS_WEB_APP_URL = 'https://script.google.com/a/macros/smcsd.org/s/AKfycbx50yH4Yzgb7atWeqm4AXaTACoh8SgC2s4n7MsVTbiBzRdjsZGsr9V4jrlLwejUD8Q/exec';
 
-function sendToSheet(data) {
-  fetch(webAppURL, {
-    method: "POST",
-    mode: "no-cors",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
-}
+    // ---------- User/session state ----------
+    let userId = null;
+    let userName = null;
+    let totalTimePlayed = 0;
+    let sessionStart = null;
 
-// Example Game Logic
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+    // ---------- Initialize Google Identity + render a big centered button ----------
+    if (window.google && google.accounts && google.accounts.id) {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse,
+        auto_select: false
+      });
 
-let question = "";
-let answer = 0;
-let feedback = "";
-let feedbackTimer = 0;
+      // Render a large button centered in our div
+      const signDiv = document.getElementById('googleSignInDiv');
+      // Use renderButton (size: large, width) so it's visually bigger and centered
+      google.accounts.id.renderButton(
+        signDiv,
+        {
+          theme: 'filled_blue',
+          size: 'large',
+          width: 300,
+          text: 'signin_with'
+        }
+      );
 
-function startGame() {
-  gameRunning = true;
-  score = 0;
-  nextQuestion();
-  requestAnimationFrame(gameLoop);
-}
-
-function nextQuestion() {
-  let a = Math.floor(Math.random() * 10) + 1;
-  let b = Math.floor(Math.random() * 10) + 1;
-  question = `${a} + ${b}`;
-  answer = a + b;
-}
-
-document.addEventListener("keydown", e => {
-  if (!gameRunning) return;
-  if (e.key >= '0' && e.key <= '9') {
-    let playerAnswer = parseInt(e.key);
-    if (playerAnswer === answer) {
-      score++;
-      nextQuestion();
+      // optional prompt (won't auto-popup when auto_select:false)
+      // google.accounts.id.prompt();
     } else {
-      feedback = "Wrong!";
-      feedbackTimer = 120; // 2 seconds at 60fps
+      console.warn('Google Identity SDK not loaded yet.');
     }
-  }
-});
 
-function gameLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.font = "30px Arial";
-  ctx.fillText(`Question: ${question}`, 300, 200);
-  ctx.fillText(`Score: ${score}`, 350, 250);
+    // Guest
+    document.getElementById('guest-button').addEventListener('click', () => {
+      userId = 'guest';
+      userName = 'Guest';
+      sessionStart = new Date();
+      document.getElementById('login-overlay').style.display = 'none';
+    });
 
-  if (feedbackTimer > 0) {
-    ctx.fillText(feedback, 350, 300);
-    feedbackTimer--;
-  }
+    // Google credential callback
+    window.handleCredentialResponse = (response) => {
+      try {
+        const data = parseJwt(response.credential);
+        userId = data.sub;
+        userName = data.name || data.email || 'Player';
+        localStorage.setItem('userId', userId);
+        localStorage.setItem('userName', userName);
+        sessionStart = new Date();
+        document.getElementById('login-overlay').style.display = 'none';
+      } catch (e) {
+        console.error('Failed to parse credential response', e);
+      }
+    };
 
-  if (gameRunning) {
-    totalTimePlayed++;
-    requestAnimationFrame(gameLoop);
-  }
-}
+    function parseJwt(token) {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join(''));
+      return JSON.parse(jsonPayload);
+    }
 
-window.addEventListener("beforeunload", endSession);
-</script>
+    // ---------- DOM Refs ----------
+    const canvasContainer = document.getElementById('game-canvas-container');
+    const startButton = document.getElementById('start-button');
+    const restartButton = document.getElementById('restart-button');
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const streakEl = document.getElementById('streak');
+    const problemEl = document.getElementById('problem');
+    const problemTextEl = document.getElementById('problem-text');
+    const answerInput = document.getElementById('answer-input');
+    const difficultySlider = document.getElementById('difficulty-slider');
+    const timeSlider = document.getElementById('time-slider');
+    const difficultyValueEl = document.getElementById('difficulty-value');
+    const timeValueEl = document.getElementById('time-value');
+    const gameOverOverlay = document.getElementById('game-over-overlay');
+    const finalScoreEl = document.getElementById('final-score');
 
+    // ---------- Game State ----------
+    let engine, render, runner;
+    let score = 0;
+    let streak = 0;
+    let timeLeft = parseInt(timeSlider.value);
+    let gameInterval;
+    let currentProblem = {};
+    let isGameRunning = false;
+    let lastAnswerTime = 0;
+    const bodiesMap = new Map();
+
+    // UI initialization
+    const updateSliderValues = () => {
+      difficultyValueEl.textContent = difficultySlider.value;
+      timeValueEl.textContent = timeSlider.value;
+      if (!isGameRunning) {
+        timerEl.textContent = timeSlider.value;
+        timeLeft = parseInt(timeSlider.value);
+      }
+    };
+    difficultySlider.addEventListener('input', updateSliderValues);
+    timeSlider.addEventListener('input', updateSliderValues);
+    startButton.addEventListener('click', startGame);
+    restartButton.addEventListener('click', startGame);
+    answerInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkAnswer(); });
+
+    // ---------- Physics setup ----------
+    function setupPhysics() {
+      engine = Matter.Engine.create({ gravity: { y: 0.6 }, enableSleeping: true });
+      const containerWidth = canvasContainer.clientWidth || 800;
+      const canvasHeight = Math.min(window.innerHeight * 0.8, 600);
+      const canvasWidth = Math.min(containerWidth, 1000);
+
+      render = Matter.Render.create({
+        element: canvasContainer,
+        engine,
+        options: {
+          width: canvasWidth,
+          height: canvasHeight,
+          wireframes: false,
+          background: '#ffffff'
+        }
+      });
+
+      runner = Matter.Runner.create();
+
+      const wallOptions = { isStatic: true, render: { fillStyle: '#374151' } };
+      Matter.World.add(engine.world, [
+        Matter.Bodies.rectangle(canvasWidth / 2, canvasHeight, canvasWidth, 20, wallOptions),
+        Matter.Bodies.rectangle(0, canvasHeight / 2, 20, canvasHeight, wallOptions),
+        Matter.Bodies.rectangle(canvasWidth, canvasHeight / 2, 20, canvasHeight, wallOptions),
+      ]);
+    }
+
+    // ---------- Start / End game ----------
+    function startGame() {
+      if (!sessionStart) sessionStart = new Date(); // if user hit Start without explicitly logging (shouldn't happen)
+      isGameRunning = true;
+      score = 0;
+      streak = 0;
+      timeLeft = parseInt(timeSlider.value);
+
+      scoreEl.textContent = '0';
+      streakEl.textContent = '0x';
+      timerEl.textContent = timeLeft;
+      gameOverOverlay.classList.add('hidden');
+      answerInput.disabled = false;
+      answerInput.focus();
+      startButton.disabled = true;
+      startButton.classList.add('opacity-50', 'cursor-not-allowed');
+      difficultySlider.disabled = true;
+      timeSlider.disabled = true;
+
+      // Clean up previous engine if exists
+      if (engine) {
+        Matter.World.clear(engine.world);
+        Matter.Engine.clear(engine);
+        Matter.Render.stop(render);
+        Matter.Runner.stop(runner);
+        if (render && render.canvas && render.canvas.parentNode) render.canvas.parentNode.removeChild(render.canvas);
+      }
+      bodiesMap.clear();
+
+      setupPhysics();
+      generateProblem();
+
+      Matter.Render.run(render);
+      Matter.Runner.run(runner, engine);
+
+      // Draw overlays and faces
+      Matter.Events.on(render, 'afterRender', () => {
+        const context = render.context;
+        context.save();
+
+        const width = render.options.width;
+        const height = render.options.height;
+        const lines = [
+          { y: height * 0.3, label: 'GOLD', color: '#FFD700' },
+          { y: height * 0.5, label: 'SILVER', color: '#C0C0C0' },
+          { y: height * 0.7, label: 'BRONZE', color: '#CD7F32' }
+        ];
+        lines.forEach(line => {
+          context.beginPath();
+          context.moveTo(10, line.y);
+          context.lineTo(width - 10, line.y);
+          context.strokeStyle = line.color;
+          context.lineWidth = 2;
+          context.setLineDash([5, 5]);
+          context.stroke();
+          context.font = 'bold 14px Poppins';
+          context.fillStyle = line.color;
+          context.textAlign = 'right';
+          context.fillText(line.label, width - 15, line.y - 5);
+        });
+
+        Matter.Composite.allBodies(engine.world).forEach(body => {
+          const bodyData = bodiesMap.get(body.id);
+          if (bodyData) {
+            context.font = `${Math.max(10, (body.circleRadius || 12) * 1.2)}px Poppins`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillStyle = 'white';
+            context.fillText(bodyData.isSmiley ? '😊' : '😠', body.position.x, body.position.y);
+          }
+        });
+        context.restore();
+      });
+
+      // Collisions
+      Matter.Events.on(engine, 'collisionStart', (event) => {
+        const pairs = event.pairs;
+        const bodiesToRemove = new Set();
+        const bodiesToAdd = [];
+
+        for (let i = 0; i < pairs.length; i++) {
+          const pair = pairs[i];
+          if (bodiesToRemove.has(pair.bodyA) || bodiesToRemove.has(pair.bodyB)) continue;
+          const bodyAData = bodiesMap.get(pair.bodyA.id);
+          const bodyBData = bodiesMap.get(pair.bodyB.id);
+
+          if (bodyAData && bodyBData) {
+            const isBodyASad = bodyAData.isSad;
+            const isBodyBSad = bodyBData.isSad;
+            const isBodyASmiley = bodyAData.isSmiley;
+            const isBodyBSmiley = bodyBData.isSmiley;
+
+            if ((isBodyASad && isBodyBSmiley) || (isBodyBSad && isBodyASmiley)) {
+              const sadFace = isBodyASad ? pair.bodyA : pair.bodyB;
+              const smileyFace = isBodyASmiley ? pair.bodyA : pair.bodyB;
+              if (sadFace.circleRadius > smileyFace.circleRadius) {
+                bodiesToRemove.add(smileyFace);
+                bodiesToRemove.add(sadFace);
+              }
+            } else if (isBodyASad && isBodyBSad) {
+              const bodyA = pair.bodyA;
+              const bodyB = pair.bodyB;
+              const newRadius = Math.sqrt(Math.pow(bodyA.circleRadius, 2) + Math.pow(bodyB.circleRadius, 2));
+              const largerFace = bodyA.circleRadius > bodyB.circleRadius ? bodyA : bodyB;
+              bodiesToAdd.push({
+                isSmiley: false,
+                radius: newRadius,
+                x: largerFace.position.x,
+                y: largerFace.position.y
+              });
+              bodiesToRemove.add(bodyA);
+              bodiesToRemove.add(bodyB);
+            }
+          }
+        }
+
+        bodiesToRemove.forEach(body => {
+          Matter.World.remove(engine.world, body);
+          bodiesMap.delete(body.id);
+        });
+
+        bodiesToAdd.forEach(item => {
+          createFace(item.isSmiley, item.radius, item.x, item.y);
+        });
+      });
+
+      // Timer
+      gameInterval = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+        if (timeLeft <= 0) endGame();
+      }, 1000);
+    }
+
+    function endGame() {
+      clearInterval(gameInterval);
+      isGameRunning = false;
+      answerInput.disabled = true;
+      finalScoreEl.textContent = score;
+      gameOverOverlay.classList.remove('hidden');
+
+      startButton.disabled = false;
+      startButton.classList.remove('opacity-50', 'cursor-not-allowed');
+      difficultySlider.disabled = false;
+      timeSlider.disabled = false;
+
+      // Save and log
+      if (userName) {
+        const duration = parseInt(timeSlider.value);
+        totalTimePlayed += duration;
+
+        const highScoreKey = `${userId || 'guest'}-highscore`;
+        const prevHigh = parseInt(localStorage.getItem(highScoreKey) || '0');
+        if (score > prevHigh) localStorage.setItem(highScoreKey, String(score));
+
+        logGameToSheets(userName, score, totalTimePlayed, sessionStart ? sessionStart.toISOString() : new Date().toISOString(), new Date().toISOString());
+      }
+    }
+
+    function generateProblem() {
+      const max = parseInt(difficultySlider.value);
+      const a = Math.floor(Math.random() * (max - 1)) + 2;
+      const b = Math.floor(Math.random() * (max - 1)) + 2;
+      currentProblem = { a, b, answer: a * b };
+      problemTextEl.textContent = 'What is...';
+      problemEl.innerHTML = `${a} × ${b}?`;
+      lastAnswerTime = Date.now();
+    }
+
+    function checkAnswer() {
+      if (!isGameRunning || answerInput.disabled) return;
+      const userAnswer = parseInt(answerInput.value);
+      if (!isNaN(userAnswer)) {
+        if (userAnswer === currentProblem.answer) {
+          handleCorrectAnswer();
+          generateProblem();
+        } else {
+          handleIncorrectAnswer();
+        }
+        answerInput.value = '';
+      }
+    }
+
+    function handleCorrectAnswer() {
+      streak++;
+      streakEl.textContent = `${streak}x`;
+      const timeTaken = (Date.now() - lastAnswerTime) / 1000;
+      const baseScore = currentProblem.answer;
+      const timeBonus = Math.max(0, 10 - timeTaken) * 10;
+      const streakBonus = baseScore * (streak / 10);
+      const pointsGained = Math.round(baseScore + timeBonus + streakBonus);
+      score += pointsGained;
+      scoreEl.textContent = score;
+
+      const radius = Math.max(8, Math.sqrt(currentProblem.answer) * 6.75);
+      createFace(true, radius);
+    }
+
+    function handleIncorrectAnswer() {
+      streak = 0;
+      streakEl.textContent = `${streak}x`;
+      score = Math.round(score * 0.9);
+      scoreEl.textContent = score;
+
+      const radius = Math.max(8, Math.sqrt(currentProblem.answer) * 3.75);
+      createFace(false, radius);
+
+      problemTextEl.textContent = 'The correct answer was:';
+      const problemText = `${currentProblem.a} × ${currentProblem.b}`;
+      problemEl.innerHTML = `${problemText} = <span class="text-red-500 font-bold">${currentProblem.answer}</span>`;
+      answerInput.disabled = true;
+
+      // 2-second pause (reduced from 5)
+      setTimeout(() => {
+        if (isGameRunning) {
+          generateProblem();
+          answerInput.disabled = false;
+          answerInput.focus();
+        }
+      }, 2000);
+    }
+
+    function createFace(isSmiley, radius, xPos, yPos) {
+      const canvasWidth = render.options.width;
+      const x = xPos !== undefined ? xPos : Math.random() * (canvasWidth - (radius * 2) - 40) + radius + 20;
+      const y = yPos !== undefined ? yPos : 30;
+      const color = isSmiley ? '#facc15' : '#ef4444';
+      const face = Matter.Bodies.circle(x, y, radius, { restitution: 0.3, friction: 0.5, density: 0.001, render: { fillStyle: color } });
+      bodiesMap.set(face.id, { isSmiley, isSad: !isSmiley });
+      Matter.World.add(engine.world, face);
+    }
+
+    // ---------- Logging to Google Sheets (minimal fields) ----------
+    function logGameToSheets(name, scoreVal, totalTime, sessionStartISO, sessionEndISO) {
+      if (!SHEETS_WEB_APP_URL) return;
+      const body = {
+        userName: name,
+        score: String(scoreVal),
+        totalTimePlayed: totalTime,
+        sessionStart: sessionStartISO,
+        sessionEnd: sessionEndISO
+      };
+
+      // Prefer sendBeacon for reliability on unload, otherwise regular fetch
+      try {
+        const blob = new Blob([JSON.stringify(body)], { type: 'application/json' });
+        navigator.sendBeacon(SHEETS_WEB_APP_URL, blob);
+      } catch (e) {
+        fetch(SHEETS_WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).catch(() => { /* silent */ });
+      }
+    }
+
+    // Send session-end row when tab closes
+    window.addEventListener('beforeunload', () => {
+      if (!sessionStart || !userName) return;
+      const payload = {
+        userName: userName,
+        score: 'Session End',
+        totalTimePlayed,
+        sessionStart: sessionStart.toISOString(),
+        sessionEnd: new Date().toISOString()
+      };
+      try {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon(SHEETS_WEB_APP_URL, blob);
+      } catch (e) {
+        // fallback
+        fetch(SHEETS_WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true
+        }).catch(() => {});
+      }
+    });
+
+    // Ensure UI slider values initialized
+    updateSliderValues();
+  }); // end DOMContentLoaded
+  </script>
 </body>
 </html>
