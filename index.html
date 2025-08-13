@@ -1,249 +1,485 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Math Suika – Chat Demo (No Login)</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Poppins', sans-serif; overflow: hidden; background-color: #f0f4f8; }
-    .game-container { touch-action: none; }
-    canvas { background-color: #ffffff; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-    .control-panel { background-color: white; padding: 24px; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-    .slider-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
-    input[type="range"] { -webkit-appearance:none; width:100%; height:8px; background:#d3d3d3; outline:none; opacity:.9; border-radius:5px; }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; background:#3b82f6; cursor:pointer; border-radius:50%; }
-    input[type="range"]::-moz-range-thumb { width:20px; height:20px; background:#3b82f6; cursor:pointer; border-radius:50%; }
-    .glass-overlay { background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.3); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplication Suika Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            background-color: #f0f4f8;
+        }
+        .game-container {
+            touch-action: none;
+        }
+        canvas {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .control-panel {
+            background-color: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+            border-radius: 5px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .glass-overlay {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-  <div class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Game Canvas -->
-    <div class="lg:col-span-2 relative game-container">
-      <div id="game-canvas-container"></div>
-      <div id="game-over-overlay" class="absolute inset-0 flex-col items-center justify-center text-center rounded-lg glass-overlay hidden">
-        <h2 class="text-5xl font-bold text-gray-800">Game Over!</h2>
-        <p class="text-2xl mt-4 text-gray-700">Final Score: <span id="final-score">0</span></p>
-        <button id="restart-button" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105">Play Again</button>
-      </div>
+
+    <div class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Game Canvas -->
+        <div class="lg:col-span-2 relative game-container">
+            <div id="game-canvas-container"></div>
+             <div id="game-over-overlay" class="absolute inset-0 flex-col items-center justify-center text-center rounded-lg glass-overlay hidden">
+                <h2 class="text-5xl font-bold text-gray-800">Game Over!</h2>
+                <p class="text-2xl mt-4 text-gray-700">Final Score: <span id="final-score">0</span></p>
+                <button id="restart-button" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls and Info Panel -->
+        <div class="control-panel flex flex-col justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 text-center mb-4">Math Suika</h1>
+                
+                <!-- Score, Timer, and Streak -->
+                <div class="grid grid-cols-3 text-center mb-6">
+                    <div>
+                        <p class="text-sm text-gray-500">SCORE</p>
+                        <p id="score" class="text-3xl font-bold text-blue-600">0</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">TIME</p>
+                        <p id="timer" class="text-3xl font-bold text-gray-800">60</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">STREAK</p>
+                        <p id="streak" class="text-3xl font-bold text-orange-500">0x</p>
+                    </div>
+                </div>
+
+                <!-- Math Problem -->
+                <div class="bg-gray-100 p-4 rounded-lg text-center mb-6 min-h-[120px] flex flex-col justify-center">
+                    <p id="problem-text" class="text-lg text-gray-600">What is...</p>
+                    <p id="problem" class="text-4xl font-bold text-gray-800 my-2">5 × 8?</p>
+                    <input type="number" id="answer-input" class="w-full text-center text-2xl p-2 border-2 border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500" placeholder="Your answer" disabled>
+                </div>
+
+                <!-- Settings -->
+                <div class="space-y-6">
+                    <div class="slider-container">
+                        <label for="difficulty-slider" class="text-sm font-medium text-gray-700 mb-1">Difficulty: <span id="difficulty-value">10</span></label>
+                        <input id="difficulty-slider" type="range" min="5" max="20" value="10" class="w-full">
+                    </div>
+                    <div class="slider-container">
+                        <label for="time-slider" class="text-sm font-medium text-gray-700 mb-1">Time (s): <span id="time-value">60</span>s</label>
+                        <input id="time-slider" type="range" min="30" max="180" step="15" value="60" class="w-full">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <button id="start-button" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                Start Game
+            </button>
+        </div>
     </div>
 
-    <!-- Controls and Info Panel -->
-    <div class="control-panel flex flex-col justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-800 text-center mb-4">Math Suika</h1>
-        <div class="grid grid-cols-3 text-center mb-6">
-          <div>
-            <p class="text-sm text-gray-500">SCORE</p>
-            <p id="score" class="text-3xl font-bold text-blue-600">0</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">TIME</p>
-            <p id="timer" class="text-3xl font-bold text-gray-800">60</p>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">STREAK</p>
-            <p id="streak" class="text-3xl font-bold text-orange-500">0x</p>
-          </div>
-        </div>
-        <div class="bg-gray-100 p-4 rounded-lg text-center mb-6 min-h-[120px] flex flex-col justify-center">
-          <p id="problem-text" class="text-lg text-gray-600">What is...</p>
-          <p id="problem" class="text-4xl font-bold text-gray-800 my-2">5 × 8?</p>
-          <input type="number" id="answer-input" class="w-full text-center text-2xl p-2 border-2 border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500" placeholder="Your answer" disabled>
-        </div>
-        <div class="space-y-6">
-          <div class="slider-container">
-            <label for="difficulty-slider" class="text-sm font-medium text-gray-700 mb-1">Difficulty: <span id="difficulty-value">10</span></label>
-            <input id="difficulty-slider" type="range" min="5" max="20" value="10" class="w-full">
-          </div>
-          <div class="slider-container">
-            <label for="time-slider" class="text-sm font-medium text-gray-700 mb-1">Time (s): <span id="time-value">60</span>s</label>
-            <input id="time-slider" type="range" min="30" max="180" step="15" value="60" class="w-full">
-          </div>
-        </div>
-      </div>
-      <button id="start-button" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-transform transform hover:scale-105">Start Game</button>
-    </div>
-  </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Matter.js modules
+            const { Engine, Render, Runner, World, Bodies, Composite, Events } = Matter;
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const { Engine, Render, Runner, World, Bodies, Composite, Events } = Matter;
-      const canvasContainer = document.getElementById('game-canvas-container');
-      const startButton = document.getElementById('start-button');
-      const restartButton = document.getElementById('restart-button');
-      const scoreEl = document.getElementById('score');
-      const timerEl = document.getElementById('timer');
-      const streakEl = document.getElementById('streak');
-      const problemEl = document.getElementById('problem');
-      const problemTextEl = document.getElementById('problem-text');
-      const answerInput = document.getElementById('answer-input');
-      const difficultySlider = document.getElementById('difficulty-slider');
-      const timeSlider = document.getElementById('time-slider');
-      const difficultyValueEl = document.getElementById('difficulty-value');
-      const timeValueEl = document.getElementById('time-value');
-      const gameOverOverlay = document.getElementById('game-over-overlay');
-      const finalScoreEl = document.getElementById('final-score');
+            // DOM Elements
+            const canvasContainer = document.getElementById('game-canvas-container');
+            const startButton = document.getElementById('start-button');
+            const restartButton = document.getElementById('restart-button');
+            const scoreEl = document.getElementById('score');
+            const timerEl = document.getElementById('timer');
+            const streakEl = document.getElementById('streak');
+            const problemEl = document.getElementById('problem');
+            const problemTextEl = document.getElementById('problem-text');
+            const answerInput = document.getElementById('answer-input');
+            const difficultySlider = document.getElementById('difficulty-slider');
+            const timeSlider = document.getElementById('time-slider');
+            const difficultyValueEl = document.getElementById('difficulty-value');
+            const timeValueEl = document.getElementById('time-value');
+            const gameOverOverlay = document.getElementById('game-over-overlay');
+            const finalScoreEl = document.getElementById('final-score');
 
-      let engine, render, runner;
-      let score = 0;
-      let streak = 0;
-      let timeLeft = parseInt(timeSlider.value);
-      let gameInterval;
-      let currentProblem = {};
-      let isGameRunning = false;
-      let lastAnswerTime = 0;
-      const bodiesMap = new Map();
+            // Game State
+            let engine, render, runner;
+            let score = 0;
+            let streak = 0;
+            let timeLeft = parseInt(timeSlider.value);
+            let gameInterval;
+            let currentProblem = {};
+            let isGameRunning = false;
+            let lastAnswerTime = 0;
+            const bodiesMap = new Map();
 
-      const updateSliderValues = () => {
-        difficultyValueEl.textContent = difficultySlider.value;
-        timeValueEl.textContent = timeSlider.value;
-        if (!isGameRunning) {
-          timerEl.textContent = timeSlider.value;
-          timeLeft = parseInt(timeSlider.value);
-        }
-      };
-      difficultySlider.addEventListener('input', updateSliderValues);
-      timeSlider.addEventListener('input', updateSliderValues);
-      startButton.addEventListener('click', startGame);
-      restartButton.addEventListener('click', startGame);
-      answerInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkAnswer(); });
+            // --- UI Initialization ---
+            const updateSliderValues = () => {
+                difficultyValueEl.textContent = difficultySlider.value;
+                timeValueEl.textContent = timeSlider.value;
+                if (!isGameRunning) {
+                    timerEl.textContent = timeSlider.value;
+                    timeLeft = parseInt(timeSlider.value);
+                }
+            };
 
-      function setupPhysics() {
-        engine = Engine.create({ gravity: { y: 0.6 }, enableSleeping: true });
-        const containerWidth = canvasContainer.clientWidth;
-        const canvasHeight = Math.min(window.innerHeight * 0.8, 600);
-        const canvasWidth = Math.min(containerWidth, 800);
-        render = Render.create({ element: canvasContainer, engine, options: { width: canvasWidth, height: canvasHeight, wireframes: false, background: '#ffffff' } });
-        runner = Runner.create();
-        const wallOptions = { isStatic: true, render: { fillStyle: '#374151' } };
-        World.add(engine.world, [
-          Bodies.rectangle(canvasWidth / 2, canvasHeight, canvasWidth, 20, wallOptions),
-          Bodies.rectangle(0, canvasHeight / 2, 20, canvasHeight, wallOptions),
-          Bodies.rectangle(canvasWidth, canvasHeight / 2, 20, canvasHeight, wallOptions),
-        ]);
-      }
+            difficultySlider.addEventListener('input', updateSliderValues);
+            timeSlider.addEventListener('input', updateSliderValues);
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', startGame);
+            answerInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
 
-      function startGame() {
-        isGameRunning = true;
-        score = 0; streak = 0; timeLeft = parseInt(timeSlider.value);
-        scoreEl.textContent = '0'; streakEl.textContent = '0x'; timerEl.textContent = timeLeft;
-        gameOverOverlay.classList.add('hidden');
-        answerInput.disabled = false; answerInput.focus();
-        startButton.disabled = true; startButton.classList.add('opacity-50','cursor-not-allowed');
-        difficultySlider.disabled = true; timeSlider.disabled = true;
+            // --- Game Setup ---
+            function setupPhysics() {
+                // Engine
+                engine = Engine.create({
+                    gravity: { y: 0.6 },
+                    enableSleeping: true,
+                });
 
-        if (engine) {
-          World.clear(engine.world); Engine.clear(engine); Render.stop(render); Runner.stop(runner); render.canvas.remove();
-        }
-        bodiesMap.clear();
-        setupPhysics();
-        generateProblem();
-        Render.run(render); Runner.run(runner, engine);
+                // Renderer
+                const containerWidth = canvasContainer.clientWidth;
+                const canvasHeight = Math.min(window.innerHeight * 0.8, 600);
+                const canvasWidth = Math.min(containerWidth, 800);
 
-        Events.on(render, 'afterRender', () => {
-          const ctx = render.context; ctx.save();
-          const w = render.options.width, h = render.options.height;
-          const lines = [ { y: h*0.3, label: 'GOLD', color: '#FFD700' }, { y: h*0.5, label: 'SILVER', color: '#C0C0C0' }, { y: h*0.7, label: 'BRONZE', color: '#CD7F32' } ];
-          lines.forEach(line => { ctx.beginPath(); ctx.moveTo(10, line.y); ctx.lineTo(w-10, line.y); ctx.strokeStyle = line.color; ctx.lineWidth = 2; ctx.setLineDash([5,5]); ctx.stroke(); ctx.font = 'bold 14px Poppins'; ctx.fillStyle = line.color; ctx.textAlign = 'right'; ctx.fillText(line.label, w-15, line.y-5); });
-          Composite.allBodies(engine.world).forEach(body => { const data = bodiesMap.get(body.id); if (data) { ctx.font = `${body.circleRadius * 1.2}px Poppins`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'white'; ctx.fillText(data.isSmiley ? '😊' : '😠', body.position.x, body.position.y); } });
-          ctx.restore();
-        });
+                render = Render.create({
+                    element: canvasContainer,
+                    engine: engine,
+                    options: {
+                        width: canvasWidth,
+                        height: canvasHeight,
+                        wireframes: false,
+                        background: '#ffffff',
+                    }
+                });
+                
+                // Runner
+                runner = Runner.create();
 
-        Events.on(engine, 'collisionStart', (event) => {
-          const bodiesToRemove = new Set(); const bodiesToAdd = [];
-          for (const pair of event.pairs) {
-            if (bodiesToRemove.has(pair.bodyA) || bodiesToRemove.has(pair.bodyB)) continue;
-            const a = bodiesMap.get(pair.bodyA.id); const b = bodiesMap.get(pair.bodyB.id);
-            if (!a || !b) continue;
-            const A = pair.bodyA, B = pair.bodyB;
-            if ((a.isSad && b.isSmiley) || (b.isSad && a.isSmiley)) {
-              const sad = a.isSad ? A : B; const smile = a.isSmiley ? A : B;
-              if (sad.circleRadius > smile.circleRadius) { bodiesToRemove.add(smile); bodiesToRemove.add(sad); }
-            } else if (a.isSad && b.isSad) {
-              const newR = Math.sqrt(A.circleRadius*A.circleRadius + B.circleRadius*B.circleRadius);
-              const bigger = A.circleRadius > B.circleRadius ? A : B;
-              bodiesToAdd.push({ isSmiley:false, radius:newR, x:bigger.position.x, y:bigger.position.y });
-              bodiesToRemove.add(A); bodiesToRemove.add(B);
+                // Boundaries
+                const wallOptions = { isStatic: true, render: { fillStyle: '#374151' } };
+                World.add(engine.world, [
+                    Bodies.rectangle(canvasWidth / 2, canvasHeight, canvasWidth, 20, wallOptions), // Floor
+                    Bodies.rectangle(0, canvasHeight / 2, 20, canvasHeight, wallOptions), // Left wall
+                    Bodies.rectangle(canvasWidth, canvasHeight / 2, 20, canvasHeight, wallOptions), // Right wall
+                ]);
             }
-          }
-          bodiesToRemove.forEach(body => { World.remove(engine.world, body); bodiesMap.delete(body.id); });
-          bodiesToAdd.forEach(it => createFace(false, it.radius, it.x, it.y));
+
+            // --- Game Logic ---
+            function startGame() {
+                isGameRunning = true;
+                score = 0;
+                streak = 0;
+                timeLeft = parseInt(timeSlider.value);
+                
+                // Reset UI
+                scoreEl.textContent = '0';
+                streakEl.textContent = '0x';
+                timerEl.textContent = timeLeft;
+                gameOverOverlay.classList.add('hidden');
+                answerInput.disabled = false;
+                answerInput.focus();
+                startButton.disabled = true;
+                startButton.classList.add('opacity-50', 'cursor-not-allowed');
+                difficultySlider.disabled = true;
+                timeSlider.disabled = true;
+
+                // Clear previous game if exists
+                if (engine) {
+                    World.clear(engine.world);
+                    Engine.clear(engine);
+                    Render.stop(render);
+                    Runner.stop(runner);
+                    render.canvas.remove();
+                }
+                bodiesMap.clear();
+
+                // Setup new game
+                setupPhysics();
+                generateProblem();
+                
+                Render.run(render);
+                Runner.run(runner, engine);
+                
+                // Custom rendering for faces and lines
+                Events.on(render, 'afterRender', () => {
+                    const context = render.context;
+                    context.save();
+
+                    // Draw goal lines
+                    const width = render.options.width;
+                    const height = render.options.height;
+                    const lines = [
+                        { y: height * 0.3, label: 'GOLD', color: '#FFD700' },
+                        { y: height * 0.5, label: 'SILVER', color: '#C0C0C0' },
+                        { y: height * 0.7, label: 'BRONZE', color: '#CD7F32' }
+                    ];
+                    lines.forEach(line => {
+                        context.beginPath();
+                        context.moveTo(10, line.y);
+                        context.lineTo(width - 10, line.y);
+                        context.strokeStyle = line.color;
+                        context.lineWidth = 2;
+                        context.setLineDash([5, 5]);
+                        context.stroke();
+                        context.font = 'bold 14px Poppins';
+                        context.fillStyle = line.color;
+                        context.textAlign = 'right';
+                        context.fillText(line.label, width - 15, line.y - 5);
+                    });
+
+
+                    // Draw faces on bodies
+                    Composite.allBodies(engine.world).forEach(body => {
+                        const bodyData = bodiesMap.get(body.id);
+                        if (bodyData) {
+                            context.font = ${body.circleRadius * 1.2}px Poppins;
+                            context.textAlign = 'center';
+                            context.textBaseline = 'middle';
+                            context.fillStyle = 'white';
+                            context.fillText(bodyData.isSmiley ? '😊' : '😠', body.position.x, body.position.y);
+                        }
+                    });
+                    context.restore();
+                });
+
+                // Collision handling
+                Events.on(engine, 'collisionStart', (event) => {
+                    const pairs = event.pairs;
+                    const bodiesToRemove = new Set();
+                    const bodiesToAdd = [];
+
+                    for (let i = 0; i < pairs.length; i++) {
+                        const pair = pairs[i];
+                        
+                        if (bodiesToRemove.has(pair.bodyA) || bodiesToRemove.has(pair.bodyB)) {
+                            continue;
+                        }
+
+                        const bodyAData = bodiesMap.get(pair.bodyA.id);
+                        const bodyBData = bodiesMap.get(pair.bodyB.id);
+
+                        if (bodyAData && bodyBData) {
+                            const isBodyASad = bodyAData.isSad;
+                            const isBodyBSad = bodyBData.isSad;
+                            const isBodyASmiley = bodyAData.isSmiley;
+                            const isBodyBSmiley = bodyBData.isSmiley;
+
+                            // Sad face + Smiley face collision
+                            if ((isBodyASad && isBodyBSmiley) || (isBodyBSad && isBodyASmiley)) {
+                                const sadFace = isBodyASad ? pair.bodyA : pair.bodyB;
+                                const smileyFace = isBodyASmiley ? pair.bodyA : pair.bodyB;
+                                if (sadFace.circleRadius > smileyFace.circleRadius) {
+                                    bodiesToRemove.add(smileyFace);
+                                    bodiesToRemove.add(sadFace);
+                                }
+                            } 
+                            // Sad face + Sad face collision (MERGE)
+                            else if (isBodyASad && isBodyBSad) {
+                                const bodyA = pair.bodyA;
+                                const bodyB = pair.bodyB;
+                                
+                                const newRadius = Math.sqrt(Math.pow(bodyA.circleRadius, 2) + Math.pow(bodyB.circleRadius, 2));
+                                const largerFace = bodyA.circleRadius > bodyB.circleRadius ? bodyA : bodyB;
+
+                                bodiesToAdd.push({
+                                    isSmiley: false,
+                                    radius: newRadius,
+                                    x: largerFace.position.x,
+                                    y: largerFace.position.y
+                                });
+                                
+                                bodiesToRemove.add(bodyA);
+                                bodiesToRemove.add(bodyB);
+                            }
+                        }
+                    }
+
+                    // Apply changes after iterating through all pairs
+                    bodiesToRemove.forEach(body => {
+                        World.remove(engine.world, body);
+                        bodiesMap.delete(body.id);
+                    });
+
+                    bodiesToAdd.forEach(item => {
+                        createFace(item.isSmiley, item.radius, item.x, item.y);
+                    });
+                });
+
+                // Start timer
+                gameInterval = setInterval(() => {
+                    timeLeft--;
+                    timerEl.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 1000);
+            }
+
+            function endGame() {
+                clearInterval(gameInterval);
+                isGameRunning = false;
+                answerInput.disabled = true;
+                finalScoreEl.textContent = score;
+                gameOverOverlay.classList.remove('hidden');
+                
+                startButton.disabled = false;
+                startButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                difficultySlider.disabled = false;
+                timeSlider.disabled = false;
+            }
+
+            function generateProblem() {
+                const max = parseInt(difficultySlider.value);
+                const a = Math.floor(Math.random() * (max - 1)) + 2;
+                const b = Math.floor(Math.random() * (max - 1)) + 2;
+                currentProblem = { a, b, answer: a * b };
+                problemTextEl.textContent = 'What is...';
+                problemEl.innerHTML = ${a} × ${b}?;
+                lastAnswerTime = Date.now(); // Record time when problem is shown
+            }
+
+            function checkAnswer() {
+                if (!isGameRunning || answerInput.disabled) return;
+
+                const userAnswer = parseInt(answerInput.value);
+                if (!isNaN(userAnswer)) {
+                    if (userAnswer === currentProblem.answer) {
+                        handleCorrectAnswer();
+                        generateProblem();
+                    } else {
+                        handleIncorrectAnswer();
+                    }
+                    answerInput.value = '';
+                }
+            }
+
+            function handleCorrectAnswer() {
+                // Increment streak
+                streak++;
+                streakEl.textContent = ${streak}x;
+
+                // Calculate score
+                const timeTaken = (Date.now() - lastAnswerTime) / 1000; // in seconds
+                const baseScore = currentProblem.answer;
+                const timeBonus = Math.max(0, 10 - timeTaken) * 10; // Bonus for fast answers
+                const streakBonus = baseScore * (streak / 10); // Multiplier bonus from streak
+                
+                const pointsGained = Math.round(baseScore + timeBonus + streakBonus);
+                score += pointsGained;
+                scoreEl.textContent = score;
+
+                // Create smiley face with new scaling
+                const radius = Math.max(8, Math.sqrt(currentProblem.answer) * 6.75);
+                createFace(true, radius);
+            }
+
+            function handleIncorrectAnswer() {
+                // Reset streak
+                streak = 0;
+                streakEl.textContent = ${streak}x;
+
+                // Penalize score by 10%
+                score = Math.round(score * 0.9);
+                scoreEl.textContent = score;
+                
+                // Create sad face with scaling based on the missed problem's product
+                const radius = Math.max(8, Math.sqrt(currentProblem.answer) * 3.75);
+                createFace(false, radius);
+
+                // Show correct answer and pause
+                problemTextEl.textContent = 'The correct answer was:';
+                const problemText = ${currentProblem.a} × ${currentProblem.b};
+                problemEl.innerHTML = ${problemText} = <span class="text-red-500 font-bold">${currentProblem.answer}</span>;
+                answerInput.disabled = true;
+
+                setTimeout(() => {
+                    if (isGameRunning) {
+                        generateProblem();
+                        answerInput.disabled = false;
+                        answerInput.focus();
+                    }
+                }, 5000);
+            }
+
+            function createFace(isSmiley, radius, xPos, yPos) {
+                const canvasWidth = render.options.width;
+                // Use provided position or generate a new random one at the top
+                const x = xPos !== undefined ? xPos : Math.random() * (canvasWidth - (radius * 2) - 40) + radius + 20;
+                const y = yPos !== undefined ? yPos : 30;
+                const color = isSmiley ? '#facc15' : '#ef4444';
+
+                const face = Bodies.circle(x, y, radius, {
+                    restitution: 0.3,
+                    friction: 0.5,
+                    density: 0.001,
+                    render: { fillStyle: color }
+                });
+                
+                bodiesMap.set(face.id, { isSmiley, isSad: !isSmiley });
+                World.add(engine.world, face);
+            }
+
+            // Initial setup
+            updateSliderValues();
         });
-
-        gameInterval = setInterval(() => { timeLeft--; timerEl.textContent = timeLeft; if (timeLeft <= 0) endGame(); }, 1000);
-      }
-
-      function endGame() {
-        clearInterval(gameInterval); isGameRunning = false; answerInput.disabled = true;
-        finalScoreEl.textContent = score; gameOverOverlay.classList.remove('hidden');
-        startButton.disabled = false; startButton.classList.remove('opacity-50','cursor-not-allowed');
-        difficultySlider.disabled = false; timeSlider.disabled = false;
-      }
-
-      function generateProblem() {
-        const max = parseInt(difficultySlider.value);
-        const a = Math.floor(Math.random() * (max - 1)) + 2;
-        const b = Math.floor(Math.random() * (max - 1)) + 2;
-        currentProblem = { a, b, answer: a * b };
-        problemTextEl.textContent = 'What is...';
-        problemEl.innerHTML = `${a} × ${b}?`;
-        lastAnswerTime = Date.now();
-      }
-
-      function checkAnswer() {
-        if (!isGameRunning || answerInput.disabled) return;
-        const userAnswer = parseInt(answerInput.value);
-        if (!isNaN(userAnswer)) {
-          if (userAnswer === currentProblem.answer) { handleCorrectAnswer(); generateProblem(); }
-          else { handleIncorrectAnswer(); }
-          answerInput.value = '';
-        }
-      }
-
-      function handleCorrectAnswer() {
-        streak++; streakEl.textContent = `${streak}x`;
-        const timeTaken = (Date.now() - lastAnswerTime) / 1000;
-        const baseScore = currentProblem.answer;
-        const timeBonus = Math.max(0, 10 - timeTaken) * 10;
-        const streakBonus = baseScore * (streak / 10);
-        const pointsGained = Math.round(baseScore + timeBonus + streakBonus);
-        score += pointsGained; scoreEl.textContent = score;
-        const radius = Math.max(8, Math.sqrt(currentProblem.answer) * 6.75);
-        createFace(true, radius);
-      }
-
-      function handleIncorrectAnswer() {
-        streak = 0; streakEl.textContent = `${streak}x`;
-        score = Math.round(score * 0.9); scoreEl.textContent = score;
-        const radius = Math.max(8, Math.sqrt(currentProblem.answer) * 3.75);
-        createFace(false, radius);
-        problemTextEl.textContent = 'The correct answer was:';
-        const problemText = `${currentProblem.a} × ${currentProblem.b}`;
-        problemEl.innerHTML = `${problemText} = <span class="text-red-500 font-bold">${currentProblem.answer}</span>`;
-        answerInput.disabled = true;
-        setTimeout(() => { // 2-second pause
-          if (isGameRunning) { generateProblem(); answerInput.disabled = false; answerInput.focus(); }
-        }, 2000);
-      }
-
-      function createFace(isSmiley, radius, xPos, yPos) {
-        const canvasWidth = render.options.width;
-        const x = xPos !== undefined ? xPos : Math.random() * (canvasWidth - (radius * 2) - 40) + radius + 20;
-        const y = yPos !== undefined ? yPos : 30;
-        const color = isSmiley ? '#facc15' : '#ef4444';
-        const face = Bodies.circle(x, y, radius, { restitution:0.3, friction:0.5, density:0.001, render:{ fillStyle: color } });
-        bodiesMap.set(face.id, { isSmiley, isSad: !isSmiley });
-        World.add(engine.world, face);
-      }
-
-      updateSliderValues();
-    });
-  </script>
+    </script>
 </body>
 </html>
-
 
